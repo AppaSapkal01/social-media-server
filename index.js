@@ -20,14 +20,13 @@ mongoose
     )
     .then(() =>
         app.listen(process.env.PORT, () =>
-            console.log("Listening")
+            console.log(`Listening at ${process.env.PORT}`)
         )
     )
     .catch((error) => console.log(error))
 
 
     // usage of routes
-
     app.use('/auth', AuthRoute)
 
 
