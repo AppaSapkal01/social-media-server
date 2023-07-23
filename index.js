@@ -25,7 +25,9 @@ mongoose
     )
     .catch((error) => console.log(error))
 
+
     // usage of routes
+
     app.use('/auth', AuthRoute)
 
 
