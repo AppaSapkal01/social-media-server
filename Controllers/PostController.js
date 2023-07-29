@@ -1,5 +1,6 @@
 import PostModel from "../Models/postModel.js";
 import mongoose from "mongoose";
+import UserModel from "../Models/userModel.js"
 
 // Create new Post
 export const createPost = async (req, res) => {
@@ -102,6 +103,63 @@ export const likePost = async (req, res) => {
         }
 
     } catch (error) {
-        res.status(403).json("Action forbidden");
+        res.status(500).json(error);
     }
 };
+
+// Get Timeline posts
+export const getTimelinePosts = async (req, res) => {
+    // Get the ID of the current user from the request parameters
+    const userId = req.params.id;
+
+    try {
+        // Step 1: Get the current user's posts from the PostModel collection
+        const currentUserPosts = await PostModel.find({ userId: userId });
+
+        // Step 2: Get posts from users the current user is following using aggregation
+        const followingPosts = await UserModel.aggregate([
+            {
+                // Match documents where the user's _id matches the current user's ID
+                $match: {
+                    _id: new mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $lookup: {
+                    // Specify the collection to perform the lookup (in this case, "posts")
+                    from: "posts",
+
+                    // The field in the UserModel to match with the foreignField
+                    localField: "following",
+
+                    // The field in the "posts" collection to match with the localField
+                    foreignField: "userId",
+
+                    // The field name to store the matching posts from the "posts" collection
+                    as: "followingPosts"
+                }
+            },
+            {
+                $project: {
+                    // Include only the "followingPosts" field in the output
+                    followingPosts: 1,
+                    // Exclude the "_id" field from the output
+                    _id: 0
+                }
+            }
+        ])
+
+        res.status(200).json(
+            // Step 3: Combine and sort the current user's posts and following user's posts
+            // Combine posts into a single array
+            currentUserPosts.concat(...followingPosts[0].followingPosts)
+                .sort((a, b) => {
+                    // Sort posts based on the "createdAt" field in descending order
+                    return b.createdAt - a.createdAt;
+                })
+        );
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
